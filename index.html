@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripe Pricing Analysis</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+
+    <style>
+        /* Custom range slider styling for consistency */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid currentColor;
+            cursor: pointer;
+            margin-top: -6px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+        
+        /* Accent colors for sliders */
+        #volumeSlider::-webkit-slider-thumb { border-color: #4f46e5; }
+        #volumeSlider::-webkit-slider-runnable-track { background: #e0e7ff; }
+        
+        #debitSlider::-webkit-slider-thumb { border-color: #0ea5e9; }
+        #debitSlider::-webkit-slider-runnable-track { background: #e0f2fe; }
+
+        #premiumSlider::-webkit-slider-thumb { border-color: #f59e0b; }
+        #premiumSlider::-webkit-slider-runnable-track { background: #fef3c7; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900 pb-20 relative">
+
+    <!-- GLOSSARY MODAL -->
+    <div id="glossaryModal" class="fixed inset-0 bg-slate-900/50 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden">
+            <div class="bg-slate-100 p-4 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="help-circle" class="w-5 h-5 text-indigo-600"></i>
+                    Data Definitions & Assumptions
+                </h3>
+                <button onclick="toggleGlossary(false)" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+                <!-- Definition 1 -->
+                <div class="flex gap-4">
+                    <div class="bg-slate-200 p-3 rounded-lg h-fit">
+                        <i data-lucide="credit-card" class="w-6 h-6 text-slate-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900">Standard Credit (The Remainder)</h4>
+                        <p class="text-sm text-slate-500 mt-1 mb-2">
+                            This accounts for all credit card volume that is NOT Amex and NOT High-Premium Rewards.
+                        </p>
+                        <ul class="text-xs text-slate-600 space-y-2 bg-slate-100 p-3 rounded border border-slate-200">
+                            <li class="flex justify-between"><span><strong>Examples:</strong> Standard Visa/Mastercard, Debit-like Credit.</span></li>
+                            <li class="flex justify-between"><span><strong>Assumption:</strong> Modeled at a baseline cost of <strong>2.05%</strong>.</span></li>
+                            <li class="flex justify-between"><span><strong>Calculation:</strong> Total Volume - Debit - Amex - Premium Rewards.</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- Definition 2 -->
+                <div class="flex gap-4">
+                    <div class="bg-amber-100 p-3 rounded-lg h-fit">
+                        <i data-lucide="gem" class="w-6 h-6 text-amber-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900">Premium Rewards Intensity</h4>
+                        <p class="text-sm text-slate-500 mt-1 mb-2">
+                            How many customers use high-perk cards (Chase Sapphire, etc.)?
+                        </p>
+                        <ul class="text-xs text-slate-600 space-y-2 bg-amber-50 p-3 rounded border border-amber-100">
+                            <li class="flex justify-between"><span><strong>The Cost:</strong> These cards cost significantly more (Interchange ~2.70%+).</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- Definition 3 -->
+                <div class="flex gap-4">
+                    <div class="bg-sky-100 p-3 rounded-lg h-fit">
+                        <i data-lucide="scale" class="w-6 h-6 text-sky-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900">Debit Mix (Regulated + Unregulated)</h4>
+                        <p class="text-sm text-slate-500 mt-1 mb-2">
+                            Percentage of volume processed via Debit cards.
+                        </p>
+                        <ul class="text-xs text-slate-600 space-y-2 bg-sky-50 p-3 rounded border border-sky-100">
+                            <li class="flex justify-between"><span><strong>Assumption:</strong> Modeled at a weighted cost of <strong>1.50%</strong>.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 p-4 border-t border-slate-200 text-right">
+                <button onclick="toggleGlossary(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                    Close Definitions
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-2">
+                    <div class="bg-indigo-600 text-white p-1.5 rounded font-bold text-xl">SPA</div>
+                    <span class="font-bold text-slate-700 tracking-tight">Stripe Pricing Analysis</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleGlossary(true)" class="flex items-center gap-1 text-sm text-indigo-600 font-semibold hover:text-indigo-800 transition-colors">
+                        <i data-lucide="help-circle" class="w-4 h-4"></i> Definitions
+                    </button>
+                    <span class="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full" id="currentDate"></span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- PAGE TITLE -->
+        <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900">Interchange-Plus Simulator</h1>
+                <p class="text-slate-500 mt-1">Tiered Pricing & Debit Sensitivity Analysis</p>
+            </div>
+            <div class="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100">
+                <i data-lucide="settings" class="w-4 h-4 text-indigo-600"></i>
+                <span class="text-xs font-semibold text-indigo-800">Assumed AOV: $2,023</span>
+            </div>
+        </div>
+
+        <!-- CONTROLS & TIER STATUS -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            
+            <!-- Controls Container -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Volume Control -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-2">
+                            <div class="bg-indigo-100 p-1.5 rounded-md">
+                                <i data-lucide="layers" class="w-4 h-4 text-indigo-600"></i>
+                            </div>
+                            <div>
+                                <label class="text-sm font-bold text-slate-700 block">Monthly Processing Volume</label>
+                                <span class="text-[10px] text-slate-400">Determines your Tier pricing bracket</span>
+                            </div>
+                        </div>
+                        <span id="displayVolume" class="text-lg font-bold text-indigo-600">$5.70M</span>
+                    </div>
+                    
+                    <div class="relative h-12">
+                        <input type="range" id="volumeSlider" min="1000000" max="15000000" step="500000" value="5700000" class="w-full absolute top-4 z-20">
+                        <div class="absolute top-0 w-full h-full flex justify-between pointer-events-none">
+                            <div class="border-l border-slate-300 h-2 absolute top-7 left-0"></div>
+                            <div class="border-l border-slate-300 h-2 absolute top-7 left-[33%]"></div>
+                            <div class="border-l border-slate-300 h-2 absolute top-7 left-[66%]"></div>
+                            <div class="border-l border-slate-300 h-2 absolute top-7 right-0"></div>
+                        </div>
+                        <div class="absolute top-8 w-full flex justify-between text-[10px] text-slate-400 font-medium pointer-events-none">
+                            <span class="w-1/3 text-left">Tier 1</span>
+                            <span class="w-1/3 text-center">Tier 2 ($5M+)</span>
+                            <span class="w-1/3 text-right">Tier 3 ($10M+)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mix Controls -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-bold text-slate-700 flex items-center gap-1">
+                                    Debit Mix <i data-lucide="info" class="w-3 h-3 text-slate-400"></i>
+                                </label>
+                                <span id="displayDebit" class="text-sm font-bold text-sky-600">20%</span>
+                            </div>
+                            <input type="range" id="debitSlider" min="0" max="50" step="1" value="20" class="w-full">
+                            <p class="text-[10px] text-slate-400 mt-1">Modelled Cost: 1.50%</p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-bold text-slate-700 flex items-center gap-1">
+                                    Rewards Card Intensity <i data-lucide="gem" class="w-3 h-3 text-amber-500"></i>
+                                </label>
+                                <span id="displayPremium" class="text-sm font-bold text-amber-600">30%</span>
+                            </div>
+                            <input type="range" id="premiumSlider" min="0" max="100" step="5" value="30" class="w-full">
+                            <p class="text-[10px] text-slate-400 mt-1">Modelled Cost: 2.70% (of Credit)</p>
+                        </div>
+                    </div>
+
+                    <!-- Composition Bar -->
+                    <div class="pt-4 border-t border-slate-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-xs font-bold text-slate-600 uppercase tracking-wide">Projected Volume Composition</p>
+                            <span class="text-[10px] text-slate-400">Total: 100%</span>
+                        </div>
+                        <div class="h-4 w-full flex rounded-full overflow-hidden bg-slate-100" id="compositionBar">
+                            <!-- Bars injected via JS -->
+                        </div>
+                        <div class="flex flex-wrap gap-4 mt-2 justify-between" id="compositionLegend">
+                            <!-- Legend injected via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Tier Card -->
+            <div class="bg-slate-900 text-white p-6 rounded-xl shadow-lg flex flex-col h-full relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                    <i data-lucide="layers" class="w-32 h-32"></i>
+                </div>
+                
+                <div class="flex-1">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <p class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Active Pricing Plan</p>
+                            <h2 id="tierName" class="text-4xl font-bold text-white">Tier 2</h2>
+                        </div>
+                        <div id="tierBadge" class="bg-indigo-600 px-3 py-1 rounded text-xs font-bold shadow-sm">
+                            $5M+
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4 relative z-10">
+                        <div class="bg-slate-800/60 p-4 rounded-lg border border-slate-700/50 backdrop-blur-sm">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm text-slate-300">Variable Fee</span>
+                                <span id="tierVariable" class="font-mono text-xl font-bold text-emerald-400">IC + 0.53%</span>
+                            </div>
+                            <div class="w-full bg-slate-700 h-1 rounded-full overflow-hidden">
+                                <div id="barVariable" class="bg-emerald-500 h-full" style="width: 84%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-slate-800/60 p-4 rounded-lg border border-slate-700/50 backdrop-blur-sm">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm text-slate-300">Fixed Fee</span>
+                                <span id="tierFixed" class="font-mono text-xl font-bold text-emerald-400">$0.17</span>
+                            </div>
+                            <div class="w-full bg-slate-700 h-1 rounded-full overflow-hidden">
+                                <div id="barFixed" class="bg-emerald-500 h-full" style="width: 85%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-slate-700/50 text-center">
+                    <p class="text-xs text-slate-400">Rates adjust automatically as volume scales.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULTS METRICS -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-32">
+                <div>
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Current Fixed Rate</p>
+                    <p class="text-[10px] text-slate-400">Blended Contract</p>
+                </div>
+                <div id="metricCurrent" class="text-3xl font-bold text-slate-600">2.82%</div>
+            </div>
+
+            <div id="cardProposed" class="p-5 rounded-xl border shadow-sm flex flex-col justify-between h-32 bg-emerald-50 border-emerald-100">
+                <div>
+                    <p id="labelProposed" class="text-xs font-bold uppercase tracking-wider text-emerald-700">IC+ Effective Rate</p>
+                    <p id="subProposed" class="text-[10px] text-emerald-600">Variable Pricing</p>
+                </div>
+                <div id="metricProposed" class="text-3xl font-bold text-emerald-700">2.68%</div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-32 relative overflow-hidden">
+                <div id="iconImpact" class="absolute -right-4 -bottom-4 opacity-10 transform rotate-12 text-emerald-500">
+                    <i data-lucide="trending-up" width="100" height="100"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Monthly Impact</p>
+                    <p class="text-[10px] text-slate-400">Estimated Savings</p>
+                </div>
+                <div id="metricSavings" class="text-3xl font-bold z-10 text-emerald-600">+$1,200</div>
+            </div>
+
+            <div class="bg-indigo-600 p-5 rounded-xl border border-indigo-500 shadow-sm flex flex-col justify-between h-32 text-white">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-indigo-200">Debit Break-Even</p>
+                        <p class="text-[10px] text-indigo-300">Required Mix</p>
+                    </div>
+                    <i data-lucide="scale" class="w-5 h-5 text-indigo-300"></i>
+                </div>
+                <div>
+                    <div id="metricBreakEven" class="text-3xl font-bold">18%</div>
+                    <div class="text-[10px] text-indigo-200 mt-1 flex items-center gap-1">
+                        Current: <span id="currentDebitMini">20%</span>
+                        <i id="breakEvenIcon" data-lucide="trending-up" class="w-3 h-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ANALYSIS CHART -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+                <div>
+                    <h3 class="font-bold text-lg flex items-center gap-2 text-slate-800">
+                        <i data-lucide="scale" class="w-5 h-5 text-indigo-600"></i>
+                        Break-Even Analysis
+                    </h3>
+                    <p class="text-sm text-slate-500 mt-1 max-w-2xl">
+                        The intersection point represents where Interchange-Plus becomes cheaper than your current fixed rate.
+                        Areas shaded in <span class="text-emerald-600 font-bold">Green</span> represent savings.
+                    </p>
+                </div>
+                <div class="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600">
+                    Current Debit Mix: <span id="chartDebitLabel" class="text-slate-900 font-bold">20%</span>
+                </div>
+            </div>
+
+            <div class="h-96 w-full relative">
+                <canvas id="pricingChart"></canvas>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- CONSTANTS ---
+        const AMEX_SHARE = 22.4; 
+        const COST_DEBIT = { rate: 0.0150, fee: 0.10 }; 
+        const COST_AMEX = { rate: 0.0236, fee: 0.10 };  
+        const COST_CREDIT_STANDARD = { rate: 0.0205, fee: 0.10 }; 
+        const COST_CREDIT_PREMIUM = { rate: 0.0270, fee: 0.10 }; 
+        const CURRENT_NON_AMEX = { rate: 0.0278, fee: 0.20 };
+        const CURRENT_AMEX = { rate: 0.0285, fee: 0.20 };
+        const AOV = 2023;
+
+        // --- STATE ---
+        let state = {
+            monthlyVolume: 5700000,
+            debitMix: 20,
+            premiumMix: 30
+        };
+
+        let chartInstance = null;
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set Date
+            const today = new Date();
+            document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+            // Initialize Icons
+            lucide.createIcons();
+
+            // Setup Chart
+            initChart();
+
+            // Initial Render
+            updateDashboard();
+
+            // Event Listeners
+            document.getElementById('volumeSlider').addEventListener('input', (e) => {
+                state.monthlyVolume = Number(e.target.value);
+                updateDashboard();
+            });
+            document.getElementById('debitSlider').addEventListener('input', (e) => {
+                state.debitMix = Number(e.target.value);
+                updateDashboard();
+            });
+            document.getElementById('premiumSlider').addEventListener('input', (e) => {
+                state.premiumMix = Number(e.target.value);
+                updateDashboard();
+            });
+        });
+
+        function toggleGlossary(show) {
+            const modal = document.getElementById('glossaryModal');
+            if(show) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            } else {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        // --- CALCULATIONS ---
+        function getTier(vol) {
+            if (vol < 5000000) return { name: 'Tier 1', rate: 0.0063, fee: 0.20, label: '$< 5M' };
+            if (vol < 10000000) return { name: 'Tier 2', rate: 0.0053, fee: 0.17, label: '$5M - $10M' };
+            return { name: 'Tier 3', rate: 0.0043, fee: 0.14, label: '$10M+' };
+        }
+
+        function updateDashboard() {
+            // 1. Update Input Displays
+            document.getElementById('displayVolume').textContent = '$' + (state.monthlyVolume / 1000000).toFixed(2) + 'M';
+            document.getElementById('displayDebit').textContent = state.debitMix + '%';
+            document.getElementById('displayPremium').textContent = state.premiumMix + '%';
+            document.getElementById('chartDebitLabel').textContent = state.debitMix + '%';
+            document.getElementById('currentDebitMini').textContent = state.debitMix + '%';
+
+            // 2. Logic
+            const tier = getTier(state.monthlyVolume);
+            
+            // Mix
+            const pctDebit = state.debitMix;
+            const pctAmex = AMEX_SHARE;
+            const pctCreditTotal = Math.max(0, 100 - pctDebit - pctAmex);
+            const pctPremium = pctCreditTotal * (state.premiumMix / 100);
+            const pctStandard = pctCreditTotal * ((100 - state.premiumMix) / 100);
+
+            // Volumes
+            const txCount = Math.round(state.monthlyVolume / AOV);
+            const volDebit = state.monthlyVolume * (pctDebit / 100);
+            const volAmex = state.monthlyVolume * (pctAmex / 100);
+            const volPremium = state.monthlyVolume * (pctPremium / 100);
+            const volStandard = state.monthlyVolume * (pctStandard / 100);
+
+            const countDebit = Math.round(txCount * (pctDebit / 100));
+            const countAmex = Math.round(txCount * (pctAmex / 100));
+            const countPremium = Math.round(txCount * (pctPremium / 100));
+            const countStandard = Math.round(txCount * (pctStandard / 100));
+
+            // Current Cost
+            const feesCurrentNonAmex = (volDebit + volPremium + volStandard) * CURRENT_NON_AMEX.rate + (countDebit + countPremium + countStandard) * CURRENT_NON_AMEX.fee;
+            const feesCurrentAmex = volAmex * CURRENT_AMEX.rate + countAmex * CURRENT_AMEX.fee;
+            const totalFeesCurrent = feesCurrentNonAmex + feesCurrentAmex;
+            const effectiveRateCurrent = (totalFeesCurrent / state.monthlyVolume) * 100;
+
+            // Proposed Cost
+            const icCostDebit = (volDebit * COST_DEBIT.rate) + (countDebit * COST_DEBIT.fee);
+            const icCostAmex = (volAmex * COST_AMEX.rate) + (countAmex * COST_AMEX.fee);
+            const icCostStandard = (volStandard * COST_CREDIT_STANDARD.rate) + (countStandard * COST_CREDIT_STANDARD.fee);
+            const icCostPremium = (volPremium * COST_CREDIT_PREMIUM.rate) + (countPremium * COST_CREDIT_PREMIUM.fee);
+            
+            const totalInterchange = icCostDebit + icCostAmex + icCostStandard + icCostPremium;
+            const stripeMarkupFees = (state.monthlyVolume * tier.rate) + (txCount * tier.fee);
+            const totalFeesProposed = totalInterchange + stripeMarkupFees;
+            const effectiveRateProposed = (totalFeesProposed / state.monthlyVolume) * 100;
+            const monthlySavings = totalFeesCurrent - totalFeesProposed;
+
+            // 3. Break Even Logic
+            let breakEvenDebitPoint = 0;
+            const sensitivityData = [];
+            
+            for (let d = 0; d <= 50; d+=2) {
+                const vD = state.monthlyVolume * (d/100);
+                const vA = state.monthlyVolume * (AMEX_SHARE / 100);
+                const vC = state.monthlyVolume - vD - vA;
+                
+                const cFees = (vD + vC) * CURRENT_NON_AMEX.rate + vA * CURRENT_AMEX.rate + (txCount * 0.20); 
+                
+                const icD = vD * COST_DEBIT.rate;
+                const icA = vA * COST_AMEX.rate; 
+                
+                const icC_Standard = vC * ((100-state.premiumMix)/100) * COST_CREDIT_STANDARD.rate;
+                const icC_Premium = vC * (state.premiumMix/100) * COST_CREDIT_PREMIUM.rate;
+                
+                const pFees = icD + icA + icC_Standard + icC_Premium + (state.monthlyVolume * tier.rate) + (txCount * tier.fee);
+                
+                const cRate = (cFees/state.monthlyVolume)*100;
+                const pRate = (pFees/state.monthlyVolume)*100;
+
+                if (Math.abs(cRate - pRate) < 0.05) breakEvenDebitPoint = d; 
+                if (sensitivityData.length > 0) {
+                    const prev = sensitivityData[sensitivityData.length - 1];
+                    if ((prev.pRate > prev.cRate && pRate < cRate) || (prev.pRate < prev.cRate && pRate > cRate)) {
+                        breakEvenDebitPoint = d - 1; 
+                    }
+                }
+                sensitivityData.push({ d, cRate, pRate });
+            }
+
+            // 4. Update UI Elements
+            
+            // Tier Card
+            document.getElementById('tierName').textContent = tier.name;
+            document.getElementById('tierBadge').textContent = tier.label;
+            document.getElementById('tierVariable').textContent = `IC + ${(tier.rate*100).toFixed(2)}%`;
+            document.getElementById('barVariable').style.width = `${(tier.rate / 0.0063) * 100}%`;
+            document.getElementById('tierFixed').textContent = `$${tier.fee.toFixed(2)}`;
+            document.getElementById('barFixed').style.width = `${(tier.fee / 0.20) * 100}%`;
+
+            // Composition Bar
+            const barHtml = `
+                <div style="width: ${pctAmex}%" class="bg-emerald-400 h-full relative group"></div>
+                <div style="width: ${pctDebit}%" class="bg-sky-400 h-full relative group"></div>
+                <div style="width: ${pctPremium}%" class="bg-amber-400 h-full relative group"></div>
+                <div style="width: ${pctStandard}%" class="bg-slate-300 h-full relative group"></div>
+            `;
+            document.getElementById('compositionBar').innerHTML = barHtml;
+
+            const legendHtml = `
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-emerald-400"></div><span class="text-[10px] text-slate-500">Amex (${pctAmex.toFixed(1)}%)</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-sky-400"></div><span class="text-[10px] text-slate-500">Debit (${pctDebit.toFixed(1)}%)</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-amber-400"></div><span class="text-[10px] text-slate-500">Premium (${pctPremium.toFixed(1)}%)</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-slate-300"></div><span class="text-[10px] text-slate-500 font-semibold">Standard (${pctStandard.toFixed(1)}%)</span></div>
+            `;
+            document.getElementById('compositionLegend').innerHTML = legendHtml;
+
+            // Metrics
+            document.getElementById('metricCurrent').textContent = effectiveRateCurrent.toFixed(2) + '%';
+            document.getElementById('metricProposed').textContent = effectiveRateProposed.toFixed(2) + '%';
+            
+            const savingsEl = document.getElementById('metricSavings');
+            const impactIcon = document.getElementById('iconImpact');
+            const cardProposed = document.getElementById('cardProposed');
+            const labelProposed = document.getElementById('labelProposed');
+            const subProposed = document.getElementById('subProposed');
+
+            if (monthlySavings > 0) {
+                savingsEl.textContent = '+' + monthlySavings.toLocaleString('en-US', {style:'currency', currency:'USD', maximumFractionDigits:0});
+                savingsEl.className = "text-3xl font-bold z-10 text-emerald-600";
+                impactIcon.innerHTML = `<i data-lucide="trending-up" width="100" height="100"></i>`;
+                impactIcon.className = "absolute -right-4 -bottom-4 opacity-10 transform rotate-12 text-emerald-500";
+                
+                cardProposed.className = "p-5 rounded-xl border shadow-sm flex flex-col justify-between h-32 bg-emerald-50 border-emerald-100";
+                labelProposed.className = "text-xs font-bold uppercase tracking-wider text-emerald-700";
+                subProposed.className = "text-[10px] text-emerald-600";
+                document.getElementById('metricProposed').className = "text-3xl font-bold text-emerald-700";
+            } else {
+                savingsEl.textContent = monthlySavings.toLocaleString('en-US', {style:'currency', currency:'USD', maximumFractionDigits:0});
+                savingsEl.className = "text-3xl font-bold z-10 text-rose-600";
+                impactIcon.innerHTML = `<i data-lucide="trending-down" width="100" height="100"></i>`;
+                impactIcon.className = "absolute -right-4 -bottom-4 opacity-10 transform rotate-12 text-rose-500";
+                
+                cardProposed.className = "p-5 rounded-xl border shadow-sm flex flex-col justify-between h-32 bg-rose-50 border-rose-100";
+                labelProposed.className = "text-xs font-bold uppercase tracking-wider text-rose-700";
+                subProposed.className = "text-[10px] text-rose-600";
+                document.getElementById('metricProposed').className = "text-3xl font-bold text-rose-700";
+            }
+            lucide.createIcons();
+
+            // Break Even Metric
+            const breakEvenEl = document.getElementById('metricBreakEven');
+            const breakEvenIcon = document.getElementById('breakEvenIcon');
+            if(breakEvenDebitPoint > 0) {
+                breakEvenEl.textContent = breakEvenDebitPoint + '%';
+                if(state.debitMix > breakEvenDebitPoint) {
+                    breakEvenIcon.setAttribute('data-lucide', 'trending-up');
+                } else {
+                    breakEvenIcon.setAttribute('data-lucide', 'trending-down');
+                }
+            } else {
+                breakEvenEl.textContent = '< 1%';
+            }
+            lucide.createIcons();
+
+            // 5. Update Chart
+            updateChartData(sensitivityData, state.debitMix, breakEvenDebitPoint, tier.name);
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('pricingChart').getContext('2d');
+            
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Current (Fixed)',
+                            data: [],
+                            borderColor: '#94a3b8',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Proposed (IC+)',
+                            data: [],
+                            borderColor: '#4f46e5',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#4f46e5',
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            backgroundColor: 'white',
+                            titleColor: '#1e293b',
+                            bodyColor: '#475569',
+                            borderColor: '#e2e8f0',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + '%';
+                                },
+                                title: function(context) {
+                                    return 'Debit Mix: ' + context[0].label + '%';
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                youLine: {
+                                    type: 'line',
+                                    xMin: 20,
+                                    xMax: 20,
+                                    borderColor: '#0ea5e9',
+                                    borderWidth: 2,
+                                    borderDash: [3, 3],
+                                    label: {
+                                        display: true,
+                                        content: 'You',
+                                        position: 'start',
+                                        backgroundColor: '#0ea5e9',
+                                        color: 'white',
+                                        font: { size: 10, weight: 'bold' }
+                                    }
+                                },
+                                breakEvenLine: {
+                                    type: 'line',
+                                    xMin: 0,
+                                    xMax: 0,
+                                    borderColor: '#10b981',
+                                    borderWidth: 2,
+                                    label: {
+                                        display: true,
+                                        content: 'Break Even',
+                                        position: 'start',
+                                        backgroundColor: '#10b981',
+                                        color: 'white',
+                                        font: { size: 10, weight: 'bold' }
+                                    }
+                                },
+                                greenZone: {
+                                    type: 'box',
+                                    xMin: 0,
+                                    xMax: 50,
+                                    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                                    borderWidth: 0
+                                },
+                                redZone: {
+                                    type: 'box',
+                                    xMin: 0,
+                                    xMax: 0,
+                                    backgroundColor: 'rgba(244, 63, 94, 0.03)',
+                                    borderWidth: 0
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Debit Mix Percentage' },
+                            grid: { display: false }
+                        },
+                        y: {
+                            title: { display: true, text: 'Effective Rate (%)' },
+                            grid: { borderDash: [2, 2] }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChartData(data, currentDebit, breakEven, tierName) {
+            const labels = data.map(d => d.d);
+            const currentRates = data.map(d => d.cRate);
+            const proposedRates = data.map(d => d.pRate);
+
+            chartInstance.data.labels = labels;
+            chartInstance.data.datasets[0].data = currentRates;
+            chartInstance.data.datasets[1].data = proposedRates;
+            chartInstance.data.datasets[1].label = `Proposed (IC+ ${tierName})`;
+
+            // Annotations
+            chartInstance.options.plugins.annotation.annotations.youLine.xMin = currentDebit;
+            chartInstance.options.plugins.annotation.annotations.youLine.xMax = currentDebit;
+
+            if (breakEven > 0) {
+                chartInstance.options.plugins.annotation.annotations.breakEvenLine.display = true;
+                chartInstance.options.plugins.annotation.annotations.breakEvenLine.xMin = breakEven;
+                chartInstance.options.plugins.annotation.annotations.breakEvenLine.xMax = breakEven;
+                
+                chartInstance.options.plugins.annotation.annotations.redZone.xMin = 0;
+                chartInstance.options.plugins.annotation.annotations.redZone.xMax = breakEven;
+                
+                chartInstance.options.plugins.annotation.annotations.greenZone.xMin = breakEven;
+                chartInstance.options.plugins.annotation.annotations.greenZone.xMax = 50;
+            } else {
+                // If IC+ is always better (breakEven = 0 or negative implied)
+                chartInstance.options.plugins.annotation.annotations.breakEvenLine.display = false;
+                chartInstance.options.plugins.annotation.annotations.redZone.xMax = 0;
+                chartInstance.options.plugins.annotation.annotations.greenZone.xMin = 0;
+            }
+
+            chartInstance.update();
+        }
+    </script>
+</body>
+</html>
