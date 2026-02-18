@@ -146,7 +146,7 @@
         <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-slate-900">Interchange-Plus Simulator</h1>
-                <p class="text-slate-500 mt-1">Tiered Pricing & Debit Sensitivity Analysis</p>
+                <p class="text-slate-500 mt-1">Progressive Tiering & Debit Sensitivity Analysis</p>
             </div>
             <div class="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100">
                 <i data-lucide="settings" class="w-4 h-4 text-indigo-600"></i>
@@ -169,14 +169,14 @@
                             </div>
                             <div>
                                 <label class="text-sm font-bold text-slate-700 block">Monthly Processing Volume</label>
-                                <span class="text-[10px] text-slate-400">Determines your Tier pricing bracket</span>
+                                <span class="text-[10px] text-slate-400">Progressive Tiering Calculation</span>
                             </div>
                         </div>
                         <span id="displayVolume" class="text-lg font-bold text-indigo-600">$5.70M</span>
                     </div>
                     
                     <div class="relative h-12">
-                        <input type="range" id="volumeSlider" min="1000000" max="15000000" step="500000" value="5700000" class="w-full absolute top-4 z-20">
+                        <input type="range" id="volumeSlider" min="1000000" max="15000000" step="100000" value="5700000" class="w-full absolute top-4 z-20">
                         <div class="absolute top-0 w-full h-full flex justify-between pointer-events-none">
                             <div class="border-l border-slate-300 h-2 absolute top-7 left-0"></div>
                             <div class="border-l border-slate-300 h-2 absolute top-7 left-[33%]"></div>
@@ -184,9 +184,9 @@
                             <div class="border-l border-slate-300 h-2 absolute top-7 right-0"></div>
                         </div>
                         <div class="absolute top-8 w-full flex justify-between text-[10px] text-slate-400 font-medium pointer-events-none">
-                            <span class="w-1/3 text-left">Tier 1</span>
-                            <span class="w-1/3 text-center">Tier 2 ($5M+)</span>
-                            <span class="w-1/3 text-right">Tier 3 ($10M+)</span>
+                            <span class="w-1/3 text-left">Tier 1 (0-5M)</span>
+                            <span class="w-1/3 text-center">Tier 2 (5M-10M)</span>
+                            <span class="w-1/3 text-right">Tier 3 (10M+)</span>
                         </div>
                     </div>
                 </div>
@@ -242,7 +242,7 @@
                 <div class="flex-1">
                     <div class="flex items-center justify-between mb-6">
                         <div>
-                            <p class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Active Pricing Plan</p>
+                            <p class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Progressive Pricing Tier</p>
                             <h2 id="tierName" class="text-4xl font-bold text-white">Tier 2</h2>
                         </div>
                         <div id="tierBadge" class="bg-indigo-600 px-3 py-1 rounded text-xs font-bold shadow-sm">
@@ -274,7 +274,7 @@
                 </div>
                 
                 <div class="mt-6 pt-6 border-t border-slate-700/50 text-center">
-                    <p class="text-xs text-slate-400">Rates adjust automatically as volume scales.</p>
+                    <p class="text-xs text-slate-400">Rates shown are marginal. Total calculations use progressive blending.</p>
                 </div>
             </div>
         </div>
@@ -292,7 +292,7 @@
             <div id="cardProposed" class="p-5 rounded-xl border shadow-sm flex flex-col justify-between h-32 bg-emerald-50 border-emerald-100">
                 <div>
                     <p id="labelProposed" class="text-xs font-bold uppercase tracking-wider text-emerald-700">IC+ Effective Rate</p>
-                    <p id="subProposed" class="text-[10px] text-emerald-600">Variable Pricing</p>
+                    <p id="subProposed" class="text-[10px] text-emerald-600">Variable Pricing (Blended)</p>
                 </div>
                 <div id="metricProposed" class="text-3xl font-bold text-emerald-700">2.68%</div>
             </div>
@@ -361,6 +361,13 @@
         const CURRENT_NON_AMEX = { rate: 0.0278, fee: 0.20 };
         const CURRENT_AMEX = { rate: 0.0285, fee: 0.20 };
         const AOV = 2023;
+        
+        // Progressive Tiers Definition
+        const TIERS = [
+            { limit: 5000000, rate: 0.0063, fee: 0.20, name: 'Tier 1', label: '$< 5M' },
+            { limit: 10000000, rate: 0.0053, fee: 0.17, name: 'Tier 2', label: '$5M - $10M' },
+            { limit: Infinity, rate: 0.0043, fee: 0.14, name: 'Tier 3', label: '$10M+' }
+        ];
 
         // --- STATE ---
         let state = {
@@ -373,20 +380,12 @@
 
         // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Set Date
             const today = new Date();
             document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-            // Initialize Icons
             lucide.createIcons();
-
-            // Setup Chart
             initChart();
-
-            // Initial Render
             updateDashboard();
 
-            // Event Listeners
             document.getElementById('volumeSlider').addEventListener('input', (e) => {
                 state.monthlyVolume = Number(e.target.value);
                 updateDashboard();
@@ -413,10 +412,39 @@
         }
 
         // --- CALCULATIONS ---
-        function getTier(vol) {
-            if (vol < 5000000) return { name: 'Tier 1', rate: 0.0063, fee: 0.20, label: '$< 5M' };
-            if (vol < 10000000) return { name: 'Tier 2', rate: 0.0053, fee: 0.17, label: '$5M - $10M' };
-            return { name: 'Tier 3', rate: 0.0043, fee: 0.14, label: '$10M+' };
+        
+        // Helper to calculate Blended Progressive Markup
+        function calculateProgressiveMarkup(volume, aov) {
+            let remainingVol = volume;
+            let totalVariableFee = 0;
+            let totalFixedFee = 0;
+            let marginalTier = TIERS[0];
+
+            // Bucket 1: 0 - 5M
+            const volT1 = Math.min(remainingVol, 5000000);
+            totalVariableFee += volT1 * TIERS[0].rate;
+            totalFixedFee += (volT1 / aov) * TIERS[0].fee;
+            remainingVol -= volT1;
+            if(volT1 > 0) marginalTier = TIERS[0];
+
+            // Bucket 2: 5M - 10M
+            if (remainingVol > 0) {
+                const volT2 = Math.min(remainingVol, 5000000); // 10M - 5M
+                totalVariableFee += volT2 * TIERS[1].rate;
+                totalFixedFee += (volT2 / aov) * TIERS[1].fee;
+                remainingVol -= volT2;
+                marginalTier = TIERS[1];
+            }
+
+            // Bucket 3: 10M+
+            if (remainingVol > 0) {
+                const volT3 = remainingVol;
+                totalVariableFee += volT3 * TIERS[2].rate;
+                totalFixedFee += (volT3 / aov) * TIERS[2].fee;
+                marginalTier = TIERS[2];
+            }
+            
+            return { totalMarkup: totalVariableFee + totalFixedFee, marginalTier };
         }
 
         function updateDashboard() {
@@ -427,18 +455,15 @@
             document.getElementById('chartDebitLabel').textContent = state.debitMix + '%';
             document.getElementById('currentDebitMini').textContent = state.debitMix + '%';
 
-            // 2. Logic
-            const tier = getTier(state.monthlyVolume);
+            // 2. Logic (Volumes)
+            const txCount = Math.round(state.monthlyVolume / AOV);
             
-            // Mix
             const pctDebit = state.debitMix;
             const pctAmex = AMEX_SHARE;
             const pctCreditTotal = Math.max(0, 100 - pctDebit - pctAmex);
             const pctPremium = pctCreditTotal * (state.premiumMix / 100);
             const pctStandard = pctCreditTotal * ((100 - state.premiumMix) / 100);
 
-            // Volumes
-            const txCount = Math.round(state.monthlyVolume / AOV);
             const volDebit = state.monthlyVolume * (pctDebit / 100);
             const volAmex = state.monthlyVolume * (pctAmex / 100);
             const volPremium = state.monthlyVolume * (pctPremium / 100);
@@ -455,15 +480,17 @@
             const totalFeesCurrent = feesCurrentNonAmex + feesCurrentAmex;
             const effectiveRateCurrent = (totalFeesCurrent / state.monthlyVolume) * 100;
 
-            // Proposed Cost
+            // Proposed Cost (Interchange + Progressive Markup)
             const icCostDebit = (volDebit * COST_DEBIT.rate) + (countDebit * COST_DEBIT.fee);
             const icCostAmex = (volAmex * COST_AMEX.rate) + (countAmex * COST_AMEX.fee);
             const icCostStandard = (volStandard * COST_CREDIT_STANDARD.rate) + (countStandard * COST_CREDIT_STANDARD.fee);
             const icCostPremium = (volPremium * COST_CREDIT_PREMIUM.rate) + (countPremium * COST_CREDIT_PREMIUM.fee);
             
             const totalInterchange = icCostDebit + icCostAmex + icCostStandard + icCostPremium;
-            const stripeMarkupFees = (state.monthlyVolume * tier.rate) + (txCount * tier.fee);
-            const totalFeesProposed = totalInterchange + stripeMarkupFees;
+            
+            // USE PROGRESSIVE CALC
+            const markupData = calculateProgressiveMarkup(state.monthlyVolume, AOV);
+            const totalFeesProposed = totalInterchange + markupData.totalMarkup;
             const effectiveRateProposed = (totalFeesProposed / state.monthlyVolume) * 100;
             const monthlySavings = totalFeesCurrent - totalFeesProposed;
 
@@ -484,7 +511,10 @@
                 const icC_Standard = vC * ((100-state.premiumMix)/100) * COST_CREDIT_STANDARD.rate;
                 const icC_Premium = vC * (state.premiumMix/100) * COST_CREDIT_PREMIUM.rate;
                 
-                const pFees = icD + icA + icC_Standard + icC_Premium + (state.monthlyVolume * tier.rate) + (txCount * tier.fee);
+                // Use progressive markup for this volume point (volume is static in this loop, mix changes)
+                const loopMarkup = calculateProgressiveMarkup(state.monthlyVolume, AOV).totalMarkup;
+
+                const pFees = icD + icA + icC_Standard + icC_Premium + loopMarkup;
                 
                 const cRate = (cFees/state.monthlyVolume)*100;
                 const pRate = (pFees/state.monthlyVolume)*100;
@@ -501,7 +531,8 @@
 
             // 4. Update UI Elements
             
-            // Tier Card
+            // Tier Card (Shows Marginal)
+            const tier = markupData.marginalTier;
             document.getElementById('tierName').textContent = tier.name;
             document.getElementById('tierBadge').textContent = tier.label;
             document.getElementById('tierVariable').textContent = `IC + ${(tier.rate*100).toFixed(2)}%`;
