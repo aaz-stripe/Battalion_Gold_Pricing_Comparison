@@ -72,47 +72,24 @@
                         <i data-lucide="credit-card" class="w-6 h-6 text-slate-600"></i>
                     </div>
                     <div>
-                        <h4 class="font-bold text-slate-900">Standard Credit (The Remainder)</h4>
-                        <p class="text-sm text-slate-500 mt-1 mb-2">
-                            This accounts for all credit card volume that is NOT Amex and NOT High-Premium Rewards.
+                        <h4 class="font-bold text-slate-900">Volume Tiers</h4>
+                        <p class="text-sm text-slate-500 mt-1">
+                            Your markup drops automatically as you scale.
                         </p>
-                        <ul class="text-xs text-slate-600 space-y-2 bg-slate-100 p-3 rounded border border-slate-200">
-                            <li class="flex justify-between"><span><strong>Examples:</strong> Standard Visa/Mastercard, Debit-like Credit.</span></li>
-                            <li class="flex justify-between"><span><strong>Assumption:</strong> Modeled at a baseline cost of <strong>2.05%</strong>.</span></li>
-                            <li class="flex justify-between"><span><strong>Calculation:</strong> Total Volume - Debit - Amex - Premium Rewards.</span></li>
-                        </ul>
+                        <div class="grid grid-cols-3 gap-2 mt-2 text-center">
+                            <div class="bg-slate-50 p-2 rounded border text-xs">
+                                <strong>Tier 1</strong><br/>&lt; $5M<br/><span class="text-indigo-600">IC + 54bps</span>
+                            </div>
+                            <div class="bg-slate-50 p-2 rounded border text-xs">
+                                <strong>Tier 2</strong><br/>$5M - $10M<br/><span class="text-indigo-600">IC + 46bps</span>
+                            </div>
+                            <div class="bg-slate-50 p-2 rounded border text-xs">
+                                <strong>Tier 3</strong><br/>&gt; $10M<br/><span class="text-indigo-600">IC + 40bps</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <!-- Definition 2 -->
-                <div class="flex gap-4">
-                    <div class="bg-amber-100 p-3 rounded-lg h-fit">
-                        <i data-lucide="gem" class="w-6 h-6 text-amber-600"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-slate-900">Premium Rewards Intensity</h4>
-                        <p class="text-sm text-slate-500 mt-1 mb-2">
-                            How many customers use high-perk cards (Chase Sapphire, etc.)?
-                        </p>
-                        <ul class="text-xs text-slate-600 space-y-2 bg-amber-50 p-3 rounded border border-amber-100">
-                            <li class="flex justify-between"><span><strong>The Cost:</strong> These cards cost significantly more (Interchange ~2.70%+).</span></li>
-                        </ul>
-                    </div>
-                </div>
-                <!-- Definition 3 -->
-                <div class="flex gap-4">
-                    <div class="bg-sky-100 p-3 rounded-lg h-fit">
-                        <i data-lucide="scale" class="w-6 h-6 text-sky-600"></i>
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-slate-900">Debit Mix (Regulated + Unregulated)</h4>
-                        <p class="text-sm text-slate-500 mt-1 mb-2">
-                            Percentage of volume processed via Debit cards.
-                        </p>
-                        <ul class="text-xs text-slate-600 space-y-2 bg-sky-50 p-3 rounded border border-sky-100">
-                            <li class="flex justify-between"><span><strong>Assumption:</strong> Modeled at a weighted cost of <strong>1.50%</strong>.</span></li>
-                        </ul>
-                    </div>
-                </div>
+
             </div>
             <div class="bg-slate-50 p-4 border-t border-slate-200 text-right">
                 <button onclick="toggleGlossary(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
@@ -364,9 +341,9 @@
         
         // Progressive Tiers Definition
         const TIERS = [
-            { limit: 5000000, rate: 0.0063, fee: 0.20, name: 'Tier 1', label: '$< 5M' },
-            { limit: 10000000, rate: 0.0053, fee: 0.17, name: 'Tier 2', label: '$5M - $10M' },
-            { limit: Infinity, rate: 0.0043, fee: 0.14, name: 'Tier 3', label: '$10M+' }
+            { limit: 5000000, rate: 0.0054, fee: 0.17, name: 'Tier 1', label: '$< 5M' },
+            { limit: 10000000, rate: 0.0046, fee: 0.15, name: 'Tier 2', label: '$5M - $10M' },
+            { limit: Infinity, rate: 0.0040, fee: 0.13, name: 'Tier 3', label: '$10M+' }
         ];
 
         // --- STATE ---
@@ -536,9 +513,9 @@
             document.getElementById('tierName').textContent = tier.name;
             document.getElementById('tierBadge').textContent = tier.label;
             document.getElementById('tierVariable').textContent = `IC + ${(tier.rate*100).toFixed(2)}%`;
-            document.getElementById('barVariable').style.width = `${(tier.rate / 0.0063) * 100}%`;
+            document.getElementById('barVariable').style.width = `${(tier.rate / 0.0054) * 100}%`;
             document.getElementById('tierFixed').textContent = `$${tier.fee.toFixed(2)}`;
-            document.getElementById('barFixed').style.width = `${(tier.fee / 0.20) * 100}%`;
+            document.getElementById('barFixed').style.width = `${(tier.fee / 0.17) * 100}%`;
 
             // Composition Bar
             const barHtml = `
