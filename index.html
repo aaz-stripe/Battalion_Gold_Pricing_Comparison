@@ -49,6 +49,9 @@
 
         #premiumSlider::-webkit-slider-thumb { border-color: #f59e0b; }
         #premiumSlider::-webkit-slider-runnable-track { background: #fef3c7; }
+
+        #standardCostSlider::-webkit-slider-thumb { border-color: #64748b; }
+        #standardCostSlider::-webkit-slider-runnable-track { background: #f1f5f9; }
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-900 pb-20 relative">
@@ -72,6 +75,53 @@
                         <i data-lucide="credit-card" class="w-6 h-6 text-slate-600"></i>
                     </div>
                     <div>
+                        <h4 class="font-bold text-slate-900">Standard Credit (The Remainder)</h4>
+                        <p class="text-sm text-slate-500 mt-1 mb-2">
+                            This accounts for all credit card volume that is NOT Amex and NOT High-Premium Rewards.
+                        </p>
+                        <ul class="text-xs text-slate-600 space-y-2 bg-slate-100 p-3 rounded border border-slate-200">
+                            <li class="flex justify-between"><span><strong>Examples:</strong> Standard Visa/Mastercard, Debit-like Credit.</span></li>
+                            <li class="flex justify-between"><span><strong>Assumption:</strong> Modeled at a baseline cost of <strong>2.50%</strong>.</span></li>
+                            <li class="flex justify-between"><span><strong>Calculation:</strong> Total Volume - Debit - Amex - Premium Rewards.</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- Definition 2 -->
+                <div class="flex gap-4">
+                    <div class="bg-amber-100 p-3 rounded-lg h-fit">
+                        <i data-lucide="gem" class="w-6 h-6 text-amber-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900">Premium Rewards Intensity</h4>
+                        <p class="text-sm text-slate-500 mt-1 mb-2">
+                            How many customers use high-perk cards (Chase Sapphire, etc.)?
+                        </p>
+                        <ul class="text-xs text-slate-600 space-y-2 bg-amber-50 p-3 rounded border border-amber-100">
+                            <li class="flex justify-between"><span><strong>The Cost:</strong> These cards cost significantly more (Interchange ~3.30%+).</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- Definition 3 -->
+                <div class="flex gap-4">
+                    <div class="bg-sky-100 p-3 rounded-lg h-fit">
+                        <i data-lucide="scale" class="w-6 h-6 text-sky-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900">Debit Mix (Regulated + Unregulated)</h4>
+                        <p class="text-sm text-slate-500 mt-1 mb-2">
+                            Percentage of volume processed via Debit cards.
+                        </p>
+                        <ul class="text-xs text-slate-600 space-y-2 bg-sky-50 p-3 rounded border border-sky-100">
+                            <li class="flex justify-between"><span><strong>Assumption:</strong> Modeled at a weighted cost of <strong>1.50%</strong>.</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- Definition 4 -->
+                <div class="flex gap-4">
+                    <div class="bg-indigo-100 p-3 rounded-lg h-fit">
+                        <i data-lucide="layers" class="w-6 h-6 text-indigo-600"></i>
+                    </div>
+                    <div>
                         <h4 class="font-bold text-slate-900">Volume Tiers</h4>
                         <p class="text-sm text-slate-500 mt-1">
                             Your markup drops automatically as you scale.
@@ -89,7 +139,6 @@
                         </div>
                     </div>
                 </div>
-
             </div>
             <div class="bg-slate-50 p-4 border-t border-slate-200 text-right">
                 <button onclick="toggleGlossary(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
@@ -170,7 +219,7 @@
 
                 <!-- Mix Controls -->
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div>
                             <div class="flex justify-between mb-2">
                                 <label class="text-sm font-bold text-slate-700 flex items-center gap-1">
@@ -190,7 +239,18 @@
                                 <span id="displayPremium" class="text-sm font-bold text-amber-600">30%</span>
                             </div>
                             <input type="range" id="premiumSlider" min="0" max="100" step="5" value="30" class="w-full">
-                            <p class="text-[10px] text-slate-400 mt-1">Modelled Cost: 2.70% (of Credit)</p>
+                            <p class="text-[10px] text-slate-400 mt-1">Modelled Cost: 3.30% (of Credit)</p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-bold text-slate-700 flex items-center gap-1">
+                                    Standard Credit Cost <i data-lucide="credit-card" class="w-3 h-3 text-slate-500"></i>
+                                </label>
+                                <span id="displayStandardCost" class="text-sm font-bold text-slate-600">2.50%</span>
+                            </div>
+                            <input type="range" id="standardCostSlider" min="1.50" max="3.50" step="0.05" value="2.50" class="w-full">
+                            <p class="text-[10px] text-slate-400 mt-1">Baseline Cost Assumption</p>
                         </div>
                     </div>
 
@@ -269,7 +329,7 @@
             <div id="cardProposed" class="p-5 rounded-xl border shadow-sm flex flex-col justify-between h-32 bg-emerald-50 border-emerald-100">
                 <div>
                     <p id="labelProposed" class="text-xs font-bold uppercase tracking-wider text-emerald-700">IC+ Effective Rate</p>
-                    <p id="subProposed" class="text-[10px] text-emerald-600">Variable Pricing (Blended)</p>
+                    <p id="subProposed" class="text-[10px] text-emerald-600">Base: <span id="baseUnderlying">2.41%</span> + Markup</p>
                 </div>
                 <div id="metricProposed" class="text-3xl font-bold text-emerald-700">2.68%</div>
             </div>
@@ -333,8 +393,8 @@
         const AMEX_SHARE = 22.4; 
         const COST_DEBIT = { rate: 0.0150, fee: 0.10 }; 
         const COST_AMEX = { rate: 0.0236, fee: 0.10 };  
-        const COST_CREDIT_STANDARD = { rate: 0.0205, fee: 0.10 }; 
-        const COST_CREDIT_PREMIUM = { rate: 0.0270, fee: 0.10 }; 
+        const COST_CREDIT_STANDARD = { fee: 0.10 }; 
+        const COST_CREDIT_PREMIUM = { rate: 0.0330, fee: 0.10 }; 
         const CURRENT_NON_AMEX = { rate: 0.0278, fee: 0.20 };
         const CURRENT_AMEX = { rate: 0.0285, fee: 0.20 };
         const AOV = 2023;
@@ -350,7 +410,8 @@
         let state = {
             monthlyVolume: 5700000,
             debitMix: 20,
-            premiumMix: 30
+            premiumMix: 30,
+            standardCost: 2.50
         };
 
         let chartInstance = null;
@@ -373,6 +434,10 @@
             });
             document.getElementById('premiumSlider').addEventListener('input', (e) => {
                 state.premiumMix = Number(e.target.value);
+                updateDashboard();
+            });
+            document.getElementById('standardCostSlider').addEventListener('input', (e) => {
+                state.standardCost = Number(e.target.value);
                 updateDashboard();
             });
         });
@@ -429,8 +494,11 @@
             document.getElementById('displayVolume').textContent = '$' + (state.monthlyVolume / 1000000).toFixed(2) + 'M';
             document.getElementById('displayDebit').textContent = state.debitMix + '%';
             document.getElementById('displayPremium').textContent = state.premiumMix + '%';
+            document.getElementById('displayStandardCost').textContent = state.standardCost.toFixed(2) + '%';
             document.getElementById('chartDebitLabel').textContent = state.debitMix + '%';
             document.getElementById('currentDebitMini').textContent = state.debitMix + '%';
+
+            const costStandardRate = state.standardCost / 100;
 
             // 2. Logic (Volumes)
             const txCount = Math.round(state.monthlyVolume / AOV);
@@ -460,7 +528,7 @@
             // Proposed Cost (Interchange + Progressive Markup)
             const icCostDebit = (volDebit * COST_DEBIT.rate) + (countDebit * COST_DEBIT.fee);
             const icCostAmex = (volAmex * COST_AMEX.rate) + (countAmex * COST_AMEX.fee);
-            const icCostStandard = (volStandard * COST_CREDIT_STANDARD.rate) + (countStandard * COST_CREDIT_STANDARD.fee);
+            const icCostStandard = (volStandard * costStandardRate) + (countStandard * COST_CREDIT_STANDARD.fee);
             const icCostPremium = (volPremium * COST_CREDIT_PREMIUM.rate) + (countPremium * COST_CREDIT_PREMIUM.fee);
             
             const totalInterchange = icCostDebit + icCostAmex + icCostStandard + icCostPremium;
@@ -470,6 +538,8 @@
             const totalFeesProposed = totalInterchange + markupData.totalMarkup;
             const effectiveRateProposed = (totalFeesProposed / state.monthlyVolume) * 100;
             const monthlySavings = totalFeesCurrent - totalFeesProposed;
+
+            const underlyingRate = (totalInterchange / state.monthlyVolume) * 100;
 
             // 3. Break Even Logic
             let breakEvenDebitPoint = 0;
@@ -485,7 +555,7 @@
                 const icD = vD * COST_DEBIT.rate;
                 const icA = vA * COST_AMEX.rate; 
                 
-                const icC_Standard = vC * ((100-state.premiumMix)/100) * COST_CREDIT_STANDARD.rate;
+                const icC_Standard = vC * ((100-state.premiumMix)/100) * costStandardRate;
                 const icC_Premium = vC * (state.premiumMix/100) * COST_CREDIT_PREMIUM.rate;
                 
                 // Use progressive markup for this volume point (volume is static in this loop, mix changes)
@@ -537,6 +607,7 @@
             // Metrics
             document.getElementById('metricCurrent').textContent = effectiveRateCurrent.toFixed(2) + '%';
             document.getElementById('metricProposed').textContent = effectiveRateProposed.toFixed(2) + '%';
+            document.getElementById('baseUnderlying').textContent = underlyingRate.toFixed(2) + '%';
             
             const savingsEl = document.getElementById('metricSavings');
             const impactIcon = document.getElementById('iconImpact');
