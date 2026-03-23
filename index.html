@@ -239,9 +239,11 @@
                                 <label class="text-sm font-bold text-slate-700 flex items-center gap-1">
                                     Rewards Card Intensity <i data-lucide="gem" class="w-3 h-3 text-amber-500"></i>
                                 </label>
-                                <span id="displayPremium" class="text-sm font-bold text-amber-600">30%</span>
+                                <!-- Initialize display at 0% -->
+                                <span id="displayPremium" class="text-sm font-bold text-amber-600">0%</span>
                             </div>
-                            <input type="range" id="premiumSlider" min="0" max="100" step="0" value="0.0" class="w-full">
+                            <!-- FIXED step from 0 to 1 and value to 0 -->
+                            <input type="range" id="premiumSlider" min="0" max="100" step="1" value="0" class="w-full">
                             <p class="text-[10px] text-slate-400 mt-1">Modelled Cost: 3.30% (of Credit)</p>
                         </div>
 
@@ -413,7 +415,7 @@
         let state = {
             monthlyVolume: 5700000,
             debitMix: 20,
-            premiumMix: 30,
+            premiumMix: 0, // INITIALIZE AT 0 TO SYNC WITH HTML
             standardCost: 2.50
         };
 
@@ -564,7 +566,8 @@
                 // Use progressive markup for this volume point (volume is static in this loop, mix changes)
                 const loopMarkup = calculateProgressiveMarkup(state.monthlyVolume, AOV).totalMarkup;
 
-                const pFees = icD + icA + icC_Standard + icC_Premium + loopMarkup;
+                // Fixed: Added the missing 0.10 flat interchange fee for all network transactions
+                const pFees = icD + icA + icC_Standard + icC_Premium + loopMarkup + (txCount * 0.10);
                 
                 const cRate = (cFees/state.monthlyVolume)*100;
                 const pRate = (pFees/state.monthlyVolume)*100;
